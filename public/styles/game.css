@@ -47,6 +47,7 @@
 .user-header {
     display: flex;
     margin: 5px 0px;
+    justify-content: space-between;
 }
 
 .user {
@@ -64,11 +65,26 @@
     height: 25px;
 }
 
+.typed{
+    background-color: #4acc66e5;
+}
+
 .user-progress {
     height: 100%;
     background-color: green;
+    width: 0%;
 }
 
 .finished {
     background-color: greenyellow !important;
+}
+
+.user__status {
+    width: 20px;
+    height: 20px;
+    background-color: #9e0000;
+    border-radius: 100%;
+}
+.user__status-active{
+    background-color: #009b22;
 }
