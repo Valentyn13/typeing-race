@@ -1,5 +1,5 @@
 import { addClass, removeAllChildNodes, removeClass } from "./helpers/dom-helper.mjs";
-import { changeUserReadyStatus, handleWindowKeyDown, setRoomName, setUsersInRoom, startTimer } from "./views/game-field.mjs";
+import { changeUserReadyStatus, clearGameTimer, handleWindowKeyDown, pressedKeys, resetGameField, setRoomName, setUsersInRoom, startTimer } from "./views/game-field.mjs";
 import { showInputModal, showMessageModal, showResultsModal } from "./views/modal.mjs";
 import { appendRoomElement, updateNumberOfUsersInRoom } from "./views/room.mjs";
 
@@ -7,6 +7,7 @@ const username = sessionStorage.getItem('username');
 const addRoomBnt = document.getElementById('add-room-btn')
 const roomsPage = document.getElementById('rooms-page')
 const gamePage = document.getElementById('game-page')
+const leaveButton = document.getElementById('quit-room-btn')
 let roomName = ''
 
 const redyButton = document.getElementById('ready-btn')
@@ -15,6 +16,7 @@ const redyButton = document.getElementById('ready-btn')
 
 export let currentRoom = null
 export let isGameOver = false
+let isGameReseted = false
 let isResultShown = false
 
 if (!username) {
@@ -28,6 +30,14 @@ socket.on('connect_error',error => {
     sessionStorage.removeItem('username')
     showMessageModal({message:'User with this name already connected', onClose:() => window.location.replace('/login')})
   
+})
+
+
+leaveButton.addEventListener('click', ()=> {
+    removeClass(roomsPage, 'display-none')
+    addClass(gamePage, 'display-none')
+    redyButton.innerText = 'READY'
+ socket.emit('LEAVE_ROOM')
 })
 
 redyButton.addEventListener('click',(e) => {
@@ -84,7 +94,7 @@ socket.on('SET_USERS_IN_ROOM',(users) =>{
 })
 
 
-socket.on('CHANGE_READY_STATUS',(user, allUsers) => {
+socket.on('CHANGE_READY_STATUS',(user) => {
 
     const {id} = user
     changeUserReadyStatus(id)
@@ -96,6 +106,9 @@ socket.on('GAME_START_TRIGGER', async (index) => {
 })
 
 socket.on('GAME_START', () => {
+    console.log('listeners added')
+    isResultShown = false
+    isGameReseted = false
     window.addEventListener('keydown',handleWindowKeyDown)
 })
 
@@ -110,8 +123,9 @@ socket.on('CHANGE_PROGRESS',(user, allUsers) => {
         
     }
     const isGameFinished = allUsers.every((user) => user.gameProgress >= 100)
-    if (isGameFinished){
+    if (isGameFinished && !isGameOver){
         isGameOver = true
+        clearGameTimer()
         socket.emit('GAME_OVER')
     }
 
@@ -119,6 +133,7 @@ socket.on('CHANGE_PROGRESS',(user, allUsers) => {
 
 
 socket.on('GAME_OVER',(winners) => {
+    window.removeEventListener('keydown', handleWindowKeyDown)
     if (!isResultShown){
         console.dir(winners)
         const userNames = winners.map(winner => {
@@ -127,4 +142,15 @@ socket.on('GAME_OVER',(winners) => {
         showResultsModal({usersSortedArray: userNames})
         isResultShown = true
     }
+})
+
+
+socket.on('RESET_GAME',(users) => {
+    if(!isGameReseted){
+        redyButton.innerText = 'READY'
+        resetGameField(users)
+         isGameOver =false
+         isGameReseted = true
+    }
+
 })
