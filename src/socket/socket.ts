@@ -1,10 +1,10 @@
 import { Server } from 'socket.io';
 
 import * as config from './config.js';
-import { enterRoom, createRoom, isAllUsersReady, randomArrayIndex } from '../helpers/sockt.helpers.js';
+import { enterRoom, createRoom, isAllUsersReady, randomArrayIndex, getSocketUserName } from '../helpers/sockt.helpers.js';
 import { IRoomData, IUserData } from '../types/client.types.js';
-import { texts } from '../data.js';
-import { getAllRooms, getRoomIfExist, getCurrentRoom, getUserFromRoom, getRoomUsers } from '../helpers/room.helpers.js';
+import { roomsMapp, texts } from '../data.js';
+import { getAllRooms, getRoomIfExist, getCurrentRoom, getUserFromRoom, getRoomUsers, getRoomByUserName } from '../helpers/room.helpers.js';
 
 
 export default (io: Server) => {
@@ -23,6 +23,38 @@ export default (io: Server) => {
             console.log(io.sockets.adapter.rooms)
         })
 
+        socket.on('LEAVE_ROOM',() => {
+            const currentRoom = getCurrentRoom(socket)
+            socket.leave(currentRoom.name)
+            currentRoom.numberOfUsers = currentRoom.numberOfUsers.filter(user => user.id !== socket.id)
+            if (currentRoom.numberOfUsers.length === 0){
+                roomsMapp.delete(currentRoom.name)
+                io.emit('GET_ROOMS', getAllRooms())
+            } else {
+                const allUsers = getRoomUsers(currentRoom)
+                io.to(currentRoom.name).emit('SET_USERS_IN_ROOM',allUsers)
+                io.emit('UPDATE_ROOM_DETAILS',{roomName:currentRoom.name,users: allUsers})
+            }
+
+        })
+
+        socket.on('disconnect',() => {
+           // console.log(io.sockets.adapter.rooms)
+            const username = getSocketUserName(socket)
+            const room = getRoomByUserName(username)
+
+            if(room){
+                room.numberOfUsers = room.numberOfUsers.filter(user => user.id !== socket.id)
+                if (room.numberOfUsers.length === 0){
+                    roomsMapp.delete(room.name)
+                    io.emit('GET_ROOMS', getAllRooms())
+                } else{
+                    const allUsers = getRoomUsers(room)
+                    io.to(room.name).emit('SET_USERS_IN_ROOM',allUsers)
+                    io.emit('UPDATE_ROOM_DETAILS',{roomName:room.name,users: allUsers})
+                }
+            }
+        })
 
         socket.on('CHANGE_READY_STATUS',() => {
             const currentRoom = getCurrentRoom(socket)
@@ -35,7 +67,7 @@ export default (io: Server) => {
                 io.to(currentRoom.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
             }
 
-            io.to(currentRoom.name).emit('CHANGE_READY_STATUS',user,allUsers )
+            io.to(currentRoom.name).emit('CHANGE_READY_STATUS',user )
         })
 
         socket.on('GAME_START',(currentRoom) => {
@@ -76,7 +108,14 @@ export default (io: Server) => {
                 const sortedList = allUsers.sort((a,b) => b.gameProgress - a.gameProgress)
                 io.to(currentRoom.name).emit('GAME_OVER',sortedList)
             }
-            
+            currentRoom.winnerList = []
+            allUsers.forEach((user) => {
+                user.gameProgress = 0
+                user.ready = false
+            })
+
+            //io.to(currentRoom.name).emit('CHANGE_READY_STATUS',allUsers )
+            io.to(currentRoom.name).emit('RESET_GAME', allUsers)
         })
     });
 
