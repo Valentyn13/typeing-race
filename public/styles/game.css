@@ -88,3 +88,7 @@
 .user__status-active{
     background-color: #009b22;
 }
+
+.underline {
+    border-bottom: 2px solid black;
+}

@@ -2,7 +2,7 @@ import { currentRoom, isGameOver } from "../game.mjs";
 import { addClass, createElement, removeClass } from "../helpers/dom-helper.mjs";
 import { getTextForGame } from "../helpers/get-text-helper.mjs";
 import {socket} from './../game.mjs'
-
+const username = sessionStorage.getItem('username');
 const roomHeader = document.getElementById('room-name')
 const leaveButton = document.getElementById('quit-room-btn')
 const userList = document.getElementById('users-wrapper')
@@ -33,6 +33,7 @@ export const handleWindowKeyDown = (e) => {
         if (keyValue === textForTyping[0]){
             pressedKeys.push(keyValue)
             quoteArray[0].classList.add('typed')
+            quoteArray[1].classList.add('underline')
             const progress = calculateProgress(pressedKeys.length, textForTyping.length)
             socket.emit('CHANGE_PROGRESS',progress)
         }
@@ -41,6 +42,8 @@ export const handleWindowKeyDown = (e) => {
         if(keyValue === textForTyping[pressedKeys.length]){
             pressedKeys.push(keyValue)
             quoteArray[pressedKeys.length - 1].classList.add('typed')
+            if(quoteArray[pressedKeys.length])quoteArray[pressedKeys.length].classList.add('underline')
+            quoteArray[pressedKeys.length - 1].classList.remove('underline')
             const progress = calculateProgress(pressedKeys.length, textForTyping.length)
             socket.emit('CHANGE_PROGRESS',progress)
         }
@@ -130,7 +133,8 @@ const createUserForGame = (userName, userId, ready) => {
         'data-user-id':userId
     }})
     const name = createElement({tagName:'span', className:'username'})
-    name.innerText = userName
+
+    userName === username ? name.innerText = userName + '  (you)': name.innerText = userName
     userHeader.append(status, name)
 
     const userProgressElementContainer = createElement({tagName:'div', className:'user-progress-template'})
