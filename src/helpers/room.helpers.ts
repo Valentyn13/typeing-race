@@ -6,6 +6,11 @@ export const getAllRooms = () => {
     return [...roomsMapp.values()]
 }
 
+export const getRoomByUserName = (userName:string) => {
+    const rooms = getAllRooms()
+    const room = rooms.find(room => room.numberOfUsers.some(user => user.userName === userName))
+    return room
+}
 
 export const getCurrentRoom = (socket:Socket) =>{
     const rooms = getAllRooms()
