@@ -32,6 +32,9 @@ socket.on('connect_error',error => {
   
 })
 
+socket.on('SHOW_ERROR_MODAL', (reason) => {
+ showMessageModal({message:reason})
+})
 
 leaveButton.addEventListener('click', ()=> {
     removeClass(roomsPage, 'display-none')
@@ -56,7 +59,7 @@ addRoomBnt.addEventListener('click',() =>{
         roomName = text
     }, onSubmit:() => {
         
-        socket.emit('JOIN_ROOM',roomName)
+        socket.emit('CREATE_ROOM',roomName)
         
     }})
 })
