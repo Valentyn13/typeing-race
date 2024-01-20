@@ -1,7 +1,8 @@
 import { Server, Socket } from "socket.io";
 import { roomsMapp } from "../data.js";
-import { IRoomData, IRoomMap, IUserDataList } from "../types/client.types.js";
-import { getUserFromRoom, addUserToRoom, getRoomUsers, addRoom, getRoomIfExist, getAllRooms } from "./room.helpers.js";
+import { IRoomData, IUserDataList } from "../types/client.types.js";
+import { addUserToRoom, getRoomUsers, addRoom, getRoomIfExist, getAllRooms } from "./room.helpers.js";
+import { MAXIMUM_USERS_FOR_ONE_ROOM } from "../socket/config.js";
 
 
 
@@ -15,24 +16,36 @@ export const isAllUsersReady = (users:IUserDataList) => {
     return ready
 }
 
-
-export const enterRoom = (io: Server, socket: Socket, room:IRoomData) => {
-    const {name} = room
+export const enterRoom = (io: Server, socket: Socket, roomName:string) => {
     const username = getSocketUserName(socket)
-    const userData = getUserFromRoom(room,socket.id)
-    if (!userData){
+    const gameRoom = getRoomIfExist(roomName)
 
-        socket.join(name)
-        addUserToRoom(name,socket.id, username)
+    if (gameRoom){
+        const users =  getRoomUsers(gameRoom)
+        console.log("USERS LENGTH:",users.length)
+        console.log("USERS:",users)
+        if (users.length >= MAXIMUM_USERS_FOR_ONE_ROOM) {
+            const reason = 'This room already has 3 members'
+            socket.emit('SHOW_ERROR_MODAL', reason)
+            return
+        }
 
-        io.emit('UPDATE_ROOM_DETAILS',{roomName:name,users:getRoomUsers(room)})
-        io.to(socket.id).emit('JOIN_ROOM_DONE',room)
-        io.to(name).emit('SET_USERS_IN_ROOM',getRoomUsers(room))
+        socket.join(roomName)
+        addUserToRoom(roomName,socket.id, username)
+
+        io.emit('UPDATE_ROOM_DETAILS',{roomName,users})
+        io.to(socket.id).emit('JOIN_ROOM_DONE',gameRoom)
+        io.to(roomName).emit('SET_USERS_IN_ROOM',users)  
     }
 }
 
 
 export const createRoom = (io:Server, socket: Socket, roomName:string) => {
+    if (roomsMapp.has(roomName)){
+        const reason = 'Room wiht this name alreasy exist'
+        socket.emit('SHOW_ERROR_MODAL', reason)
+        return
+    }
     const username = getSocketUserName(socket)
     socket.join(roomName)
     addRoom(roomName,socket.id, username)

@@ -13,14 +13,12 @@ export default (io: Server) => {
         socket.emit('GET_ROOMS', getAllRooms())
 
         socket.on('JOIN_ROOM',(roomName:string) =>{
-            
-            const isRoomExist =  getRoomIfExist(roomName)
-            if (isRoomExist ){
-                enterRoom(io,socket, isRoomExist)
-            }else{
-                createRoom(io, socket,roomName)
-            }
+            enterRoom(io,socket,roomName)
             console.log(io.sockets.adapter.rooms)
+        })
+
+        socket.on('CREATE_ROOM',(roomName:string) => {
+            createRoom(io,socket,roomName)
         })
 
         socket.on('LEAVE_ROOM',() => {
