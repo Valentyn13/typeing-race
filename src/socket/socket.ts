@@ -32,6 +32,12 @@ export default (io: Server) => {
                 const allUsers = getRoomUsers(currentRoom)
                 io.to(currentRoom.name).emit('SET_USERS_IN_ROOM',allUsers)
                 io.emit('UPDATE_ROOM_DETAILS',{roomName:currentRoom.name,users: allUsers})
+
+                if (allUsers.length > 1 && isAllUsersReady(allUsers)){
+
+                    io.to(currentRoom.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
+                }
+    
             }
 
         })
@@ -50,6 +56,12 @@ export default (io: Server) => {
                     const allUsers = getRoomUsers(room)
                     io.to(room.name).emit('SET_USERS_IN_ROOM',allUsers)
                     io.emit('UPDATE_ROOM_DETAILS',{roomName:room.name,users: allUsers})
+
+                    if (allUsers.length > 1 && isAllUsersReady(allUsers)){
+
+                        io.to(room.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
+                    }
+        
                 }
             }
         })
