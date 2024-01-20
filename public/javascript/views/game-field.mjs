@@ -16,10 +16,14 @@ const gameText = document.getElementById('text-container')
 const gameTimerContainer = document.getElementById('game-timer')
 const gameTimerSeconds = document.getElementById('game-timer-seconds')
 
-
+let gameTimer;
 let textForTyping = null
 
-const pressedKeys = []
+
+export const clearGameTimer = () =>{
+    clearInterval(gameTimer)
+}
+export let pressedKeys = []
 
 export const handleWindowKeyDown = (e) => {
     const quoteArray = gameText.querySelectorAll('span')
@@ -68,9 +72,17 @@ export const hideElements = () => {
     addClass(redyButton,'display-none')
     removeClass(timerToStart,'display-none')
 }
+export const resetGameField = (users) => {
+    removeClass(leaveButton,'display-none')
+    removeClass(redyButton,'display-none')
+    addClass(gameText,'display-none')
+    addClass(gameTimerContainer,'display-none')
+    setUsersInRoom(users)
+}
 
 
 export const startTimer = async (socket, duration, index) => {
+    pressedKeys = []
     const quote = await getTextForGame(index)
     textForTyping = quote
     hideElements()
@@ -96,13 +108,15 @@ const gameDurationTimer = (socket, duration) => {
     gameTimerSeconds.innerText = timer
     removeClass(gameTimerContainer, 'display-none')
     
-    let gameTimer = setInterval(() => {
+    gameTimer = setInterval(() => {
         if (isGameOver) clearInterval(gameTimer)
         gameTimerSeconds.innerText = timer
         if (--timer < 0) {
             clearInterval(gameTimer)
-            window.removeEventListener('keydown', handleWindowKeyDown)
-            socket.emit('GAME_OVER')
+            if (!isGameOver){
+                socket.emit('GAME_OVER')
+            }
+            
         }
     },1000)
 }
