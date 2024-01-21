@@ -1,64 +1,102 @@
-import { Server, Socket } from "socket.io";
-import { roomsMapp } from "../data.js";
-import { IRoomData, IUserDataList } from "../types/client.types.js";
-import { addUserToRoom, getRoomUsers, addRoom, getRoomIfExist, getAllRooms } from "./room.helpers.js";
-import { MAXIMUM_USERS_FOR_ONE_ROOM } from "../socket/config.js";
+import { Server, Socket } from 'socket.io';
+import { roomsMapp, texts } from '../data.js';
+import { IRoomData, IUserDataList } from '../types/client.types.js';
+import { addUserToRoom, getRoomUsers, addRoom, getRoomIfExist, getAllRooms, getCurrentRoom, getRoomByUserName } from './room.helpers.js';
+import { MAXIMUM_USERS_FOR_ONE_ROOM } from '../socket/config.js';
 
-
+export const randomArrayIndex = (arr: string[]) => {
+    return Math.floor(Math.random() * arr.length);
+};
 
 export const getSocketUserName = (socket: Socket) => socket.handshake.query.username as string;
 
-export const isAllUsersReady = (users:IUserDataList) => {
-    let ready = true
+export const isAllUsersReady = (users: IUserDataList) => {
+    let ready = true;
     users.forEach(user => {
-        if(!user.ready) ready = false
-    })
-    return ready
-}
+        if (!user.ready) ready = false;
+    });
+    return ready;
+};
 
-export const enterRoom = (io: Server, socket: Socket, roomName:string) => {
-    const username = getSocketUserName(socket)
-    const gameRoom = getRoomIfExist(roomName)
+export const enterRoom = (io: Server, socket: Socket, roomName: string) => {
+    const username = getSocketUserName(socket);
+    const gameRoom = getRoomIfExist(roomName);
 
-    if (gameRoom){
-        const users =  getRoomUsers(gameRoom)
-        console.log("USERS LENGTH:",users.length)
-        console.log("USERS:",users)
+    if (gameRoom) {
+        const users = getRoomUsers(gameRoom);
         if (users.length >= MAXIMUM_USERS_FOR_ONE_ROOM) {
-            const reason = 'This room already has 3 members'
-            socket.emit('SHOW_ERROR_MODAL', reason)
-            return
+            const reason = 'This room already has 3 members';
+            socket.emit('SHOW_ERROR_MODAL', reason);
+            return;
         }
 
-        socket.join(roomName)
-        addUserToRoom(roomName,socket.id, username)
+        socket.join(roomName);
+        addUserToRoom(roomName, socket.id, username);
 
-        io.emit('UPDATE_ROOM_DETAILS',{roomName,users})
-        io.to(socket.id).emit('JOIN_ROOM_DONE',gameRoom)
-        io.to(roomName).emit('SET_USERS_IN_ROOM',users)  
+        io.emit('UPDATE_ROOM_DETAILS', { roomName, users });
+        io.to(socket.id).emit('JOIN_ROOM_DONE', gameRoom);
+        io.to(roomName).emit('SET_USERS_IN_ROOM', users);
     }
-}
+};
+
+export const createRoom = (io: Server, socket: Socket, roomName: string) => {
+    if (roomsMapp.has(roomName)) {
+        const reason = 'Room wiht this name alreasy exist';
+        socket.emit('SHOW_ERROR_MODAL', reason);
+        return;
+    }
+    const username = getSocketUserName(socket);
+    socket.join(roomName);
+    addRoom(roomName, socket.id, username);
+
+    const newRoom = getRoomIfExist(roomName) as IRoomData;
+
+    io.emit('GET_ROOMS', getAllRooms());
+    io.emit('UPDATE_ROOM_DETAILS', { roomName, users: getRoomUsers(newRoom) });
+    io.to(socket.id).emit('JOIN_ROOM_DONE', newRoom);
+    io.to(newRoom.name).emit('SET_USERS_IN_ROOM', getRoomUsers(newRoom));
+};
 
 
-export const createRoom = (io:Server, socket: Socket, roomName:string) => {
-    if (roomsMapp.has(roomName)){
-        const reason = 'Room wiht this name alreasy exist'
-        socket.emit('SHOW_ERROR_MODAL', reason)
+export const leaveRoom = (io: Server, socket: Socket) => {
+    const currentRoom = getCurrentRoom(socket)
+    socket.leave(currentRoom.name)
+    currentRoom.numberOfUsers = currentRoom.numberOfUsers.filter(user => user.id !== socket.id)
+
+    if (currentRoom.numberOfUsers.length === 0){
+        roomsMapp.delete(currentRoom.name)
+        io.emit('GET_ROOMS', getAllRooms())
         return
     }
+    const allUsers = getRoomUsers(currentRoom)
+    io.to(currentRoom.name).emit('SET_USERS_IN_ROOM',allUsers)
+    io.emit('UPDATE_ROOM_DETAILS',{roomName:currentRoom.name,users: allUsers})
+
+    if (allUsers.length > 1 && isAllUsersReady(allUsers)){
+        io.to(currentRoom.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
+    }
+}
+
+
+export const handleDisconnect = (io: Server, socket: Socket) => {
     const username = getSocketUserName(socket)
-    socket.join(roomName)
-    addRoom(roomName,socket.id, username)
+    const room = getRoomByUserName(username)
 
-    const newRoom = getRoomIfExist(roomName) as IRoomData
+    if(room){
+        room.numberOfUsers = room.numberOfUsers.filter(user => user.id !== socket.id)
+        if (room.numberOfUsers.length === 0){
+            roomsMapp.delete(room.name)
+            io.emit('GET_ROOMS', getAllRooms())
+            return
+        }
+        const allUsers = getRoomUsers(room)
+        io.to(room.name).emit('SET_USERS_IN_ROOM',allUsers)
+        io.emit('UPDATE_ROOM_DETAILS',{roomName:room.name,users: allUsers})
 
-    io.emit('GET_ROOMS', getAllRooms())
-    io.emit('UPDATE_ROOM_DETAILS',{roomName,users:getRoomUsers(newRoom)})
-    io.to(socket.id).emit('JOIN_ROOM_DONE',newRoom)
-    io.to(newRoom.name).emit('SET_USERS_IN_ROOM',getRoomUsers(newRoom))
+        if (allUsers.length > 1 && isAllUsersReady(allUsers)){
+              io.to(room.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
+        }
+    }
 }
 
 
-export const randomArrayIndex = (arr:string[]) => {
-    return Math.floor(Math.random()* arr.length)
-}

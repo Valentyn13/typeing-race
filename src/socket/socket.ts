@@ -1,10 +1,10 @@
 import { Server } from 'socket.io';
 
 import * as config from './config.js';
-import { enterRoom, createRoom, isAllUsersReady, randomArrayIndex, getSocketUserName } from '../helpers/sockt.helpers.js';
+import { enterRoom, createRoom, isAllUsersReady, randomArrayIndex, leaveRoom, handleDisconnect } from '../helpers/sockt.helpers.js';
 import { IRoomData, IUserData } from '../types/client.types.js';
-import { roomsMapp, texts } from '../data.js';
-import { getAllRooms, getRoomIfExist, getCurrentRoom, getUserFromRoom, getRoomUsers, getRoomByUserName } from '../helpers/room.helpers.js';
+import { texts } from '../data.js';
+import { getAllRooms, getRoomIfExist, getCurrentRoom, getUserFromRoom, getRoomUsers } from '../helpers/room.helpers.js';
 
 
 export default (io: Server) => {
@@ -14,7 +14,6 @@ export default (io: Server) => {
 
         socket.on('JOIN_ROOM',(roomName:string) =>{
             enterRoom(io,socket,roomName)
-            console.log(io.sockets.adapter.rooms)
         })
 
         socket.on('CREATE_ROOM',(roomName:string) => {
@@ -22,48 +21,11 @@ export default (io: Server) => {
         })
 
         socket.on('LEAVE_ROOM',() => {
-            const currentRoom = getCurrentRoom(socket)
-            socket.leave(currentRoom.name)
-            currentRoom.numberOfUsers = currentRoom.numberOfUsers.filter(user => user.id !== socket.id)
-            if (currentRoom.numberOfUsers.length === 0){
-                roomsMapp.delete(currentRoom.name)
-                io.emit('GET_ROOMS', getAllRooms())
-            } else {
-                const allUsers = getRoomUsers(currentRoom)
-                io.to(currentRoom.name).emit('SET_USERS_IN_ROOM',allUsers)
-                io.emit('UPDATE_ROOM_DETAILS',{roomName:currentRoom.name,users: allUsers})
-
-                if (allUsers.length > 1 && isAllUsersReady(allUsers)){
-
-                    io.to(currentRoom.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
-                }
-    
-            }
-
+            leaveRoom(io,socket)
         })
 
         socket.on('disconnect',() => {
-           // console.log(io.sockets.adapter.rooms)
-            const username = getSocketUserName(socket)
-            const room = getRoomByUserName(username)
-
-            if(room){
-                room.numberOfUsers = room.numberOfUsers.filter(user => user.id !== socket.id)
-                if (room.numberOfUsers.length === 0){
-                    roomsMapp.delete(room.name)
-                    io.emit('GET_ROOMS', getAllRooms())
-                } else{
-                    const allUsers = getRoomUsers(room)
-                    io.to(room.name).emit('SET_USERS_IN_ROOM',allUsers)
-                    io.emit('UPDATE_ROOM_DETAILS',{roomName:room.name,users: allUsers})
-
-                    if (allUsers.length > 1 && isAllUsersReady(allUsers)){
-
-                        io.to(room.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
-                    }
-        
-                }
-            }
+            handleDisconnect(io, socket)
         })
 
         socket.on('CHANGE_READY_STATUS',() => {

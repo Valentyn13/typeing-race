@@ -109,7 +109,6 @@ socket.on('GAME_START_TRIGGER', async (index) => {
 })
 
 socket.on('GAME_START', () => {
-    console.log('listeners added')
     isResultShown = false
     isGameReseted = false
     window.addEventListener('keydown',handleWindowKeyDown)
