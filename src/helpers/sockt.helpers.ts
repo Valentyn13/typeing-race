@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { roomsMapp, texts } from '../data.js';
-import { IRoomData, IUserDataList } from '../types/client.types.js';
-import { addUserToRoom, getRoomUsers, addRoom, getRoomIfExist, getAllRooms, getCurrentRoom, getRoomByUserName } from './room.helpers.js';
+import { IRoomData, IUserData, IUserDataList } from '../types/client.types.js';
+import { addUserToRoom, getRoomUsers, addRoom, getRoomIfExist, getAllRooms, getCurrentRoom, getRoomByUserName, getUserFromRoom } from './room.helpers.js';
 import { MAXIMUM_USERS_FOR_ONE_ROOM } from '../socket/config.js';
 
 export const randomArrayIndex = (arr: string[]) => {
@@ -99,4 +99,34 @@ export const handleDisconnect = (io: Server, socket: Socket) => {
     }
 }
 
+export const gameStart = (io:Server, currentRoom:string) => {
+    const room = getRoomIfExist(currentRoom) as IRoomData
+    io.to(room.name).emit('GAME_START')
+}
 
+export const changeStatus = (io: Server, socket: Socket) => {
+    const currentRoom = getCurrentRoom(socket)
+    const user = getUserFromRoom(currentRoom, socket.id) as IUserData
+    const allUsers = getRoomUsers(currentRoom)
+    user.ready = !user.ready
+
+    if (allUsers.length > 1 && isAllUsersReady(allUsers)){
+
+        io.to(currentRoom.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
+    }
+
+    io.to(currentRoom.name).emit('CHANGE_READY_STATUS',user )
+}
+
+
+export const changeProgress = (io: Server,socket: Socket,progress:number) => {
+    const currentRoom = getCurrentRoom(socket)
+    const user = getUserFromRoom(currentRoom, socket.id) as IUserData
+    const allUsers = getRoomUsers(currentRoom)
+    user.gameProgress = progress
+    if (progress >= 100){
+        currentRoom.winnerList.push(user)
+    }
+    
+    io.to(currentRoom.name).emit('CHANGE_PROGRESS', user, allUsers)
+}

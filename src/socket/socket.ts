@@ -1,10 +1,8 @@
 import { Server } from 'socket.io';
 
 import * as config from './config.js';
-import { enterRoom, createRoom, isAllUsersReady, randomArrayIndex, leaveRoom, handleDisconnect } from '../helpers/sockt.helpers.js';
-import { IRoomData, IUserData } from '../types/client.types.js';
-import { texts } from '../data.js';
-import { getAllRooms, getRoomIfExist, getCurrentRoom, getUserFromRoom, getRoomUsers } from '../helpers/room.helpers.js';
+import { enterRoom, createRoom, leaveRoom, handleDisconnect, gameStart, changeProgress, changeStatus } from '../helpers/sockt.helpers.js';
+import { getAllRooms, getCurrentRoom, getRoomUsers } from '../helpers/room.helpers.js';
 
 
 export default (io: Server) => {
@@ -29,34 +27,15 @@ export default (io: Server) => {
         })
 
         socket.on('CHANGE_READY_STATUS',() => {
-            const currentRoom = getCurrentRoom(socket)
-            const user = getUserFromRoom(currentRoom, socket.id) as IUserData
-            const allUsers = getRoomUsers(currentRoom)
-            user.ready = !user.ready
-
-            if (allUsers.length > 1 && isAllUsersReady(allUsers)){
-
-                io.to(currentRoom.name).emit('GAME_START_TRIGGER',randomArrayIndex(texts))
-            }
-
-            io.to(currentRoom.name).emit('CHANGE_READY_STATUS',user )
+            changeStatus(io, socket)
         })
 
         socket.on('GAME_START',(currentRoom) => {
-            const room = getRoomIfExist(currentRoom) as IRoomData
-            io.to(room.name).emit('GAME_START')
+            gameStart(io, currentRoom)
         })
 
-        socket.on('CHANGE_PROGRESS',(progress) => {
-            const currentRoom = getCurrentRoom(socket)
-            const user = getUserFromRoom(currentRoom, socket.id) as IUserData
-            const allUsers = getRoomUsers(currentRoom)
-            user.gameProgress = progress
-            if (progress >= 100){
-                currentRoom.winnerList.push(user)
-            }
-            
-            io.to(currentRoom.name).emit('CHANGE_PROGRESS', user, allUsers)
+        socket.on('CHANGE_PROGRESS',(progress:number) => {
+            changeProgress(io, socket, progress)
         })
 
         socket.on('GAME_OVER',() => {
@@ -85,8 +64,6 @@ export default (io: Server) => {
                 user.gameProgress = 0
                 user.ready = false
             })
-
-            //io.to(currentRoom.name).emit('CHANGE_READY_STATUS',allUsers )
             io.to(currentRoom.name).emit('RESET_GAME', allUsers)
         })
     });
