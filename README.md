@@ -52,7 +52,7 @@
 ✅ New text for the new game
 
 
-### Game breaks in the following cases(you should restart server and cliend windows)
+### Game breaks in the following cases(you should restart server and client windows)
 
 ❌ Do not show in the list of rooms rooms that have already started a timer 
 
