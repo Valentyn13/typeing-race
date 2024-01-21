@@ -24,11 +24,8 @@ export const removeClass = (element, className) => {
 
 export const formatClassNames = className => className.split(' ').filter(Boolean);
 
-
-
-export const removeAllChildNodes = (parent) => {
+export const removeAllChildNodes = parent => {
     while (parent.firstChild) {
         parent.removeChild(parent.firstChild);
     }
 };
-
