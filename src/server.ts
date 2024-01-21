@@ -17,29 +17,27 @@ routes(app);
 
 app.get('*', (req, res) => res.redirect('/login'));
 
-socketIo.use((socket,next) => {
-    const username = socket.handshake.query.username as string
+socketIo.use((socket, next) => {
+    const username = socket.handshake.query.username as string;
     if (!username) {
-        next(new Error(`Username must be provided!`))
+        next(new Error(`Username must be provided!`));
     }
 
+    socket.on('disconnect', () => {
+        const index = clients.findIndex(client => client.username === username);
+        clients.splice(index, 1);
+    });
 
-    socket.on('disconnect',() => {
-        const index = clients.findIndex(client => client.username === username)
-        clients.splice(index,1)
-    })
+    const isClientWithNameExist = clients.find(client => client.username === username);
 
-    const isClientWithNameExist = clients.find(client => client.username === username)
-
-    if (isClientWithNameExist){
-        next(new Error(`User with name ${username} already connected`))
+    if (isClientWithNameExist) {
+        next(new Error(`User with name ${username} already connected`));
     } else {
-        clients.push({id:socket.id, username})
-        console.log(clients)
-        next()
+        clients.push({ id: socket.id, username });
+        console.log(clients);
+        next();
     }
-})
-
+});
 
 socketHandler(socketIo);
 

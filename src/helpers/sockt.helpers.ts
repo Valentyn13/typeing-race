@@ -130,3 +130,32 @@ export const changeProgress = (io: Server,socket: Socket,progress:number) => {
     
     io.to(currentRoom.name).emit('CHANGE_PROGRESS', user, allUsers)
 }
+
+export const gameOverHandler = (io: Server, socket: Socket) => {
+    const currentRoom = getCurrentRoom(socket)
+    const allUsers = getRoomUsers(currentRoom)
+
+    if (currentRoom.winnerList.length === allUsers.length){
+         io.to(currentRoom.name).emit('GAME_OVER', currentRoom.winnerList)
+    } else if (currentRoom.winnerList.length !== 0) {
+        const winners = [...currentRoom.winnerList]
+        for(const user of allUsers) {
+            let isInWinners = false
+            for(const winner of winners){
+                if(user.id === winner.id) isInWinners = true
+            }
+            if(!isInWinners) winners.push(user)
+        }
+        const sortedList = winners.sort((a,b) => b.gameProgress - a.gameProgress)
+        io.to(currentRoom.name).emit('GAME_OVER',sortedList)
+    } else {
+        const sortedList = allUsers.sort((a,b) => b.gameProgress - a.gameProgress)
+        io.to(currentRoom.name).emit('GAME_OVER',sortedList)
+    }
+    currentRoom.winnerList = []
+    allUsers.forEach((user) => {
+        user.gameProgress = 0
+        user.ready = false
+    })
+    io.to(currentRoom.name).emit('RESET_GAME', allUsers)
+}
